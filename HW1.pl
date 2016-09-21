@@ -44,7 +44,6 @@ sub mutate_seq
 			if ($_ eq $letter) {
 				$index = $x;
 				print "Found matching character $letter at index $index\n";
-				my $evolve = &randcalc;
 				&weightarray($index);
 			}
 			$x++;
@@ -82,7 +81,10 @@ sub readpam
 
 =begin
 Create an array based off the column of replacement probabilities at given index
-Use this to make a random weight-based replacement in mut_seq
+Sort this array and reverse so it goes from largest to smallest probability
+Generate random # from 0 to 10,000
+Iterate through weighted array and determine which "section" random number falls into
+Replace amino acid accordingly
 =cut
 sub weightarray
 {
@@ -91,9 +93,40 @@ sub weightarray
 	{
 		$weightarr[$t] = $matrix[$t][$_[0]];
 	}
+	@weightarr = sort { $a <=> $b }  @weightarr;
+	@weightarr = reverse @weightarr;
 	for(my $i = 0; $i < 20; $i++) {
 		print "$weightarr[$i] ";
 	}
+	print "\n";
+	my $evolve = &randcalc;
+	
+	
+}
+
+=begin
+Sort the weighted array using bubble sort 
+It isn't the ideal algorithm but we will always have only 20 elements
+So in this case it is acceptable
+This allows us to more easily use weighted selection from the PAM column
+Based on online implementation
+=cut
+sub bubble {
+    my $array = @_;
+    my $unsorted = 1;
+    my $index;
+    my $len = 18;
+    while ($unsorted) {
+        $unsorted = 0;
+        foreach $index (0 .. $len) {
+            if (@$array[$index] > @$array[$index + 1]) {
+                my $temp = @$array[$index + 1];
+                @$array[$index + 1] = @$array[$index];
+                @$array[$index] = $temp;
+                $unsorted = 1;
+            }
+        }
+    }
 }
 
 =begin
