@@ -6,7 +6,7 @@ Homework 1
 
 #use strict;
 use warnings;
-use List::MoreUtils qw(first_index);
+#use List::MoreUtils qw(first_index);
 
 my @chars = ("A", "R", "N", "D", "C", "Q", "E", "G", "H", "I", "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V");
 my $length = 50;
@@ -37,14 +37,15 @@ For each amino acid:
 sub mutate_seq
 {
 	my $str = $_[0];
-	$x = 0;
 	print "$str\n";
 	foreach $letter (split //, $str) {
-		my $evolve = &randcalc;
+		$x = 0;
 		foreach (@chars) {
 			if ($_ eq $letter) {
-				print "Found matching character $letter\n";
-				$index = first_index { $_ eq $letter} @chars;
+				$index = $x;
+				print "Found matching character $letter at index $index\n";
+				my $evolve = &randcalc;
+				&weightarray($index);
 			}
 			$x++;
 		}
@@ -76,6 +77,22 @@ sub readpam
 		$i++;
 		$j = 0;
 		
+	}
+}
+
+=begin
+Create an array based off the column of replacement probabilities at given index
+Use this to make a random weight-based replacement in mut_seq
+=cut
+sub weightarray
+{
+	my @weightarr;
+	for ($t = 0; $t < 20; $t++)
+	{
+		$weightarr[$t] = $matrix[$t][$_[0]];
+	}
+	for(my $i = 0; $i < 20; $i++) {
+		print "$weightarr[$i] ";
 	}
 }
 
