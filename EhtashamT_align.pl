@@ -6,14 +6,14 @@ Homework 1
 
 #use strict;
 use List::Util 'max';
-use warnings;
-use Bio::SeqIO
+#use warnings;
 
 #Scoring
 $identity = 4;
 $transition = -2;
 $transversion = -3;
 $gap = -8;
+$score;
 #Flag to print DP matrix
 $DPflag = 0;
 
@@ -29,6 +29,9 @@ $len2;
 $alignment1;
 $alignment2;
 
+@Purines = ("A", "G");
+@Pyrimidines = ("T", "C");
+
 #Matrix for holding numbers
 @DPmatrix;
 #Matrix for holding directional letters (for backtracking)
@@ -37,10 +40,12 @@ $alignment2;
 =begin
 Read sequence text file
 Format will be 4 rows:
+
 >name1
 sequence1
 >name2
 sequence2
+
 Set both sequences to scalar
 =cut
 sub readseq
@@ -89,13 +94,39 @@ sub construct_matrix
 	$DPmatrixL[0][$_] = '-' for 0..$len1;
 	for (my $i = 1; $i < $len2; $i++) {
 		for (my $j = 1; $j < $len1; $j++) {
+		
+			#Checks if this cell's row and column letter match, use for diagonal value
 			my $match = $seq1m[$j-1] eq $seq2m[$i-1];
-			
-			#Get the three score values
+			if ($match) {
+				$trans = $identity;
+			} else {
+				#Check if this is a transition or transversion
+				if (grep {$seq1m[$j-1] eq $_} @Purines) {
+					if (grep {$seq2m[$i-1] eq $_} @Pyrimidines) {
+						$trans = $transversion;
+					}
+					else {
+						$trans = $transition;
+					}
+				}
+				elsif (grep {$seq2m[$i-1] eq $_} @Purines) {
+					if (grep {$seq1m[$j-1] eq $_} @Pyrimidines) {
+						$trans = $transversion;
+					}
+					else {
+						$trans = $transition;
+					}
+				}
+				else {
+					$trans = $transition;
+				}
+			}
+			$diag = $DPmatrix[$i-1][$j-1] + $trans;
+			#Get the three score values, this is where scoring system is used
 			my @scores = (
 				$DPmatrix[$i-1][$j] + $gap,  #Top value
 				$DPmatrix[$i][$j-1] + $gap,  #Left
-				$match ? $DPmatrix[$i-1][$j-1] + $transversion : $DPmatrix[$i-1][$j-1] - 1, #Diagonal value
+				$diag
 			);
 			
 			#Get highest value
@@ -125,25 +156,29 @@ At each move, generate the alignments (this will be backwards, reverse at the en
 sub track 
 {
 	#tracker 1 is the row, tracker 2 is the column
-	$tracker1 = $len2-1;
-	$tracker2 = $len1-1;
-	while ($tracker1 => 1 && $tracker2 >= 1) {
+	$tracker1 = $len2;
+	$tracker2 = $len1;
+	while ($tracker1 >= 0 && $tracker2 >= 0) {
 		$direction = $DPmatrixL[$tracker1][$tracker2];
-		print "Moving $direction\n";
-		#Go up, add gap to original seq
+		#Go up, add gap to original seq, normal letter to subject seq
 		if ($direction eq 't') {
+			$score += $DPmatrix[$tracker1][$tracker2];
 			$DPmatrixL[$tracker1][$tracker2] = 'o';
 			$alignment1 .= '-';
+			$alignment2 .= substr($seq2, $tracker1, 1);
 			$tracker1--;
 		}
-		#Go left, add gap to subject seq
+		#Go left, add gap to subject seq, normal letter to query seq
 		elsif ($direction eq 'l') {
+			$score += $DPmatrix[$tracker1][$tracker2];
 			$DPmatrixL[$tracker1][$tracker2] = 'o';
+			$alignment1 .= substr($seq1, $tracker2, 1);
 			$alignment2 .= '-';
 			$tracker2--;
 		}
 		#Go diagonal, add matching letter to both alignments
 		else {
+			$score += $DPmatrix[$tracker1][$tracker2];
 			$DPmatrixL[$tracker1][$tracker2] = 'o';
 			$alignment1 .= substr($seq1, $tracker2, 1);
 			$alignment2 .= substr($seq2, $tracker1, 1);
@@ -155,25 +190,29 @@ sub track
 	$alignment2 = reverse $alignment2;
 }
 
+
+
 =begin
-Main Program
+MAIN Program
 Read the number of arguments
 If one, it is only the text filefield
 If more, make sure second one is the -o 1 flag
 =cut
 $numargs = $#ARGV + 1;
+#If -o 1 flag is set, filename will be the third argument
 if ($ARGV[0] eq "-o") {
-	$filename =$ARGV[1];
+	$filename =$ARGV[2];
 	$DPflag = 1;
 }
+#Otherwise, it is the first
 else {
 	$filename =$ARGV[0];
 }
 #Print some information
 print "$filename\n";
 &readseq;
-$len1 = length($seq1);
-$len2 = length($seq2);
+$len1 = length($seq1)+1;
+$len2 = length($seq2)+1;
 @seq1m = $seq1 =~ /./g;
 @seq2m = $seq2 =~ /./g;
 print "$seq1name $seq1...length: $len1\n";
@@ -185,12 +224,17 @@ print "$seq2name $seq2...length: $len2\n\n";
 #Backtrack
 &track;
 
-#Call print function on both functions
-#if ($DPflag == 1) {
+#Print matrices if flag is set
+if ($DPflag == 1) {
 	&printmatrix(\@DPmatrix);
 	&printmatrix(\@DPmatrixL);
-	print "$alignment1\n";
-	print "$alignment2\n";
-#}
+}
+
+#Show alignment and score
+print "Alignment: \n";
+print "$alignment1\n";
+print "$alignment2\n";
+print "Score: \n";
+print "$score\n";
 
 
